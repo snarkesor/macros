@@ -1,0 +1,196 @@
+Sub OADP_AnalysisHistorical()
+
+    Call OptimizeCode_Begin
+    Call RemoveBlankRowsColumns
+
+    Dim dataWorkbook As Workbook
+    Dim dataWorksheet As Worksheet
+    Dim masterWorkbook As Workbook
+    Dim masterWorksheet As Worksheet
+    Dim masterFilePath As String
+    Dim folderpath As String
+    Dim filename As String
+    
+    Set masterWorkbook = ActiveWorkbook
+    Set masterWorksheet = ActiveWorkbook.Sheets(1)
+    If ActiveSheet.AutoFilterMode Then ActiveSheet.AutoFilterMode = False
+    
+    folderpath = GetFolder() + "\"
+    filename = Dir(folderpath & "*.xl*")
+    
+    Dim rng As Range
+    
+    Do While filename <> ""
+
+        Set dataWorkbook = Workbooks.Open(folderpath & filename)
+        dataWorkbook.Sheets("Data").Activate
+        Set dataWorksheet = ActiveSheet
+        If ActiveSheet.AutoFilterMode Then ActiveSheet.AutoFilterMode = False
+        Call RemoveBlankRowsColumns
+        
+        dataWorksheet.Range("D1").AutoFilter Field:=4, Criteria1:="Leaver - Cost Center Movement"
+        dataLastRow = dataWorksheet.UsedRange.rows.Count
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("A2:BN" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Application.DisplayAlerts = False
+            Selection.Delete
+            Application.DisplayAlerts = True
+        
+        If ActiveSheet.AutoFilterMode Then ActiveSheet.AutoFilterMode = False
+        
+        'Filter data sheet for OADP and P. Kirby
+        
+        dataWorksheet.Range("AJ1").AutoFilter Field:=36, Criteria1:="*OADP*"
+        dataWorksheet.Range("Y1").AutoFilter Field:=25, Criteria1:="Patrick Kirby"
+        dataWorksheet.Range("AF1").AutoFilter Field:=32, Criteria1:="Kirby,Patrick C."
+        
+        'Copy data over to Master List
+        
+        lastRow = masterWorksheet.Range("A" & masterWorksheet.rows.Count).End(xlUp).Row
+        dataLastRow = dataWorksheet.UsedRange.rows.Count
+        
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("I2:I" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("A" & lastRow + 1)
+            
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("J2:J" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("B" & lastRow + 1)
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("K2:K" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("C" & lastRow + 1)
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("T2:T" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("D" & lastRow + 1)
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("U2:U" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("E" & lastRow + 1)
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("AG2:AG" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("F" & lastRow + 1)
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("AH2:AH" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("G" & lastRow + 1)
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("AE2:AE" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("H" & lastRow + 1)
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("BC2:BC" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("I" & lastRow + 1)
+        
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("C2:C" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("J" & lastRow + 1)
+            
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("D2:D" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("K" & lastRow + 1)
+            
+        Set rng = Application.Intersect(ActiveSheet.UsedRange, Range("AJ2:AJ" & dataLastRow))
+            rng.SpecialCells(xlCellTypeVisible).Select
+            Selection.Copy masterWorksheet.Range("L" & lastRow + 1)
+        
+        dataWorkbook.Close savechanges:=False
+        
+        filename = Dir()
+    Loop
+
+    masterWorkbook.Activate
+    
+    masterWorksheet.Columns.AutoFit
+    
+    Call OptimizeCode_End
+
+End Sub
+
+Public Function Parse_Resource(URL As String)
+ 'Uncomment the below line to test locally without calling the function & remove argument above
+ 'Dim URL As String
+ Dim SplitURL() As String
+ Dim i As Integer
+ Dim WebDAVURI As String
+
+
+ 'Check for a double forward slash in the resource path. This will indicate a URL
+ If Not InStr(1, URL, "//", vbBinaryCompare) = 0 Then
+
+     'Split the URL into an array so it can be analyzed & reused
+     SplitURL = Split(URL, "/", , vbBinaryCompare)
+
+     'URL has been found so prep the WebDAVURI string
+     WebDAVURI = "\\"
+
+     'Check if the URL is secure
+     If SplitURL(0) = "https:" Then
+         'The code iterates through the array excluding unneeded components of the URL
+         For i = 0 To UBound(SplitURL)
+             If Not SplitURL(i) = "" Then
+                 Select Case i
+                     Case 0
+                         'Do nothing because we do not need the HTTPS element
+                     Case 1
+                         'Do nothing because this array slot is empty
+                     Case 2
+                     'This should be the root URL of the site. Add @ssl to the WebDAVURI
+                         WebDAVURI = WebDAVURI & SplitURL(i) & "@ssl"
+                     Case Else
+                         'Append URI components and build string
+                         WebDAVURI = WebDAVURI & "\" & SplitURL(i)
+                 End Select
+             End If
+         Next i
+
+     Else
+     'URL is not secure
+         For i = 0 To UBound(SplitURL)
+
+            'The code iterates through the array excluding unneeded components of the URL
+             If Not SplitURL(i) = "" Then
+                 Select Case i
+                     Case 0
+                         'Do nothing because we do not need the HTTPS element
+                     Case 1
+                         'Do nothing because this array slot is empty
+                         Case 2
+                     'This should be the root URL of the site. Does not require an additional slash
+                         WebDAVURI = WebDAVURI & SplitURL(i)
+                     Case Else
+                         'Append URI components and build string
+                         WebDAVURI = WebDAVURI & "\" & SplitURL(i)
+                 End Select
+             End If
+         Next i
+     End If
+  'Set the Parse_Resource value to WebDAVURI
+  Parse_Resource = WebDAVURI
+ Else
+ 'There was no double forward slash so return system path as is
+     Parse_Resource = URL
+ End If
+
+
+ End Function
+
+Function GetFolder() As String
+    Dim fldr As FileDialog
+    Dim sItem As String
+    Set fldr = Application.FileDialog(msoFileDialogFolderPicker)
+    With fldr
+        .Title = "Select a Folder"
+        .AllowMultiSelect = False
+        .InitialFileName = Application.DefaultFilePath
+        If .Show <> -1 Then GoTo NextCode
+        sItem = .SelectedItems(1)
+    End With
+NextCode:
+    GetFolder = sItem
+    Set fldr = Nothing
+End Function
